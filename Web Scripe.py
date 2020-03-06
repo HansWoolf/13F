@@ -6,6 +6,7 @@ import pandas as pd
 import re
 import requests
 from bs4 import BeautifulSoup as Soup
+import fuzzywuzzy
 
 #%%
 #Define Function get Infotable
@@ -57,6 +58,8 @@ for row in FundTerm.index:
     Portfolio = pd.concat([Portfolio,TempPortfolio], axis = 0)
     print(row)
 Portfolio['Value'] = Portfolio['Value'].astype(int)
+Portfolio['Shares'] = Portfolio['Shares'].astype(int)
+
 Portfolio.reset_index(drop = True, inplace = True)
 
 # %%
@@ -65,15 +68,16 @@ N = 5
 TopNPortfolio = pd.DataFrame()
 Fund_Date_Index = Portfolio.drop_duplicates(subset = ['Fund','Date'],keep = 'first',inplace = False)[['Fund','Date']]
 for row in Fund_Date_Index.index:
-    TempPortfolio = Portfolio.loc[(Portfolio['Fund']==Fund_Date_Index.loc[row,'Fund'])&(Portfolio['Date']==Fund_Date_Index.loc[row,'Date'])].nlargest(N,'Value')
+    DuplicateCheck = N
+    while True:
+        TempPortfolio = Portfolio.loc[(Portfolio['Fund']==Fund_Date_Index.loc[row,'Fund'])&(Portfolio['Date']==Fund_Date_Index.loc[row,'Date'])].drop_duplicates().nlargest(DuplicateCheck,'Value')
+        if (len(TempPortfolio.drop_duplicates(subset = 'IssuerName'))==N): break
+        DuplicateCheck += 1
     SumPortfolio = TempPortfolio['Value'].sum()
     TempPortfolio['Percentage'] = TempPortfolio['Value']/SumPortfolio
-    TempPortfolio['Manager'] = Fund_Date_Index.loc[row,'Fund']
     TempPortfolio['Date'] = Fund_Date_Index.loc[row,'Date']
     TopNPortfolio = pd.concat([TopNPortfolio,TempPortfolio], axis = 0)
-
-
-
-
+TopNPortfolio.reset_index(drop = True, inplace = True)
+TopNPortfolio = TopNPortfolio[['Fund','Date','IssuerName','Value','Shares','Percentage','CUSIP','ShareClass','SH/PRN','Description','Other Manager']]
 
 # %%
